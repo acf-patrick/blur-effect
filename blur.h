@@ -15,10 +15,6 @@
     #define RMASK 0x000000ff
 #endif
 
-// conveniency
-Uint32 getPixel(int, int, SDL_Surface*);
-void setPixel(int, int, Uint32, SDL_Surface*);
-
 // blur file image
 // using box algorithm
 SDL_Surface* boxBlur(const std::string&, int extent = 1);

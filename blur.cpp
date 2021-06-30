@@ -1,60 +1,7 @@
 #include "blur.h"
 #include <SDL2/SDL_image.h>
 #include <iostream>
-
-SDL_Surface* boxBlur(const std::string& file_name, int extent)
-{
-    return boxBlur(IMG_Load(file_name.c_str()), extent);
-}
-
-SDL_Surface* boxBlur(SDL_Surface* surface, int extent)
-{
-    if (extent <= 0 or !surface)
-        return surface;
-
-    SDL_LockSurface(surface);
-
-    int n = extent*2 + 1;
-    int w = surface->w, h = surface->h;
-    SDL_Rect sr = { 0, 0, w, h };
-    SDL_Surface* ret = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, RMASK, GMASK, BMASK, AMASK);
-    if (!ret)
-    {
-        std::cerr << "Can't create destination surface!\n";
-        return NULL;
-    }
-
-    for (int i = 0; i < w; ++i)
-    {
-        for (int j = 0; j < h; ++j)
-        {
-            int r, g, b, a;
-            r = g = b = a = 0;
-            for (int x = -extent; x <= extent; ++x)
-            for (int y = -extent; y <= extent; ++y)
-            {
-                SDL_Point p = { x+i, y+j };
-                if (SDL_PointInRect(&p, &sr))
-                {
-                    Uint32 px = getPixel(p.x, p.y, surface);
-                    Uint8 r0, g0, b0, a0;
-                    SDL_GetRGBA(px, surface->format, &r0, &g0, &b0, &a0);
-                    r += r0;
-                    g += g0;
-                    b += b0;
-                    a += a0;
-                }
-            }
-            r /= n*n;
-            g /= n*n;
-            b /= n*n;
-            a /= n*n; 
-            setPixel(i, j, SDL_MapRGBA(ret->format, r, g, b, a), ret);
-        }
-    }
-
-    return ret;
-}
+#include <cmath>
 
 Uint32 getPixel(int x, int y, SDL_Surface* surface)
 {
@@ -122,4 +69,122 @@ void setPixel(int x, int y, Uint32 pixel, SDL_Surface* surface)
         break;
     default : ;
     }
+}
+
+SDL_Surface* boxBlur(const std::string& file_name, int extent)
+{
+    return boxBlur(IMG_Load(file_name.c_str()), extent);
+}
+
+SDL_Surface* gaussianBlur(const std::string& file_name, int extent)
+{
+    return gaussianBlur(IMG_Load(file_name.c_str()), extent);
+}
+
+SDL_Surface* boxBlur(SDL_Surface* surface, int extent)
+{
+    if (extent <= 0 or !surface)
+        return surface;
+
+    SDL_LockSurface(surface);
+
+    const int radius = extent*2 + 1;
+    int w = surface->w, h = surface->h;
+    SDL_Rect sr = { 0, 0, w, h };
+    SDL_Surface* ret = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, RMASK, GMASK, BMASK, AMASK);
+    if (!ret)
+    {
+        std::cerr << "Can't create destination surface!\n";
+        return NULL;
+    }
+
+    for (int i = 0; i < w; ++i)
+    {
+        for (int j = 0; j < h; ++j)
+        {
+            int r, g, b, a;
+            r = g = b = a = 0;
+            for (int x = -extent; x <= extent; ++x)
+            for (int y = -extent; y <= extent; ++y)
+            {
+                SDL_Point p = { x+i, y+j };
+                if (SDL_PointInRect(&p, &sr))
+                {
+                    Uint32 px = getPixel(p.x, p.y, surface);
+                    Uint8 r0, g0, b0, a0;
+                    SDL_GetRGBA(px, surface->format, &r0, &g0, &b0, &a0);
+                    r += r0/(radius*radius);
+                    g += g0/(radius*radius);
+                    b += b0/(radius*radius);
+                    a += a0/(radius*radius);
+                }
+            }
+            setPixel(i, j, SDL_MapRGBA(ret->format, r, g, b, a), ret);
+        }
+    }
+
+    SDL_UnlockSurface(surface);
+    return ret;
+}
+
+SDL_Surface* gaussianBlur(SDL_Surface* surface, int extent)
+{
+    if (extent <= 0 or !surface)
+        return surface;
+
+    SDL_LockSurface(surface);
+
+    const int radius = extent*2 + 1;
+    int w = surface->w, h = surface->h;
+    SDL_Rect sr = { 0, 0, w, h };
+    SDL_Surface* ret = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, RMASK, GMASK, BMASK, AMASK);
+    if (!ret)
+    {
+        std::cerr << "Can't create destination surface!\n";
+        return NULL;
+    }
+    int i, j;
+
+    float sigma = std::max(extent/2.0, 1.0);
+    float var = sigma*sigma;
+    float sum = 0;
+    double ker[radius][radius];
+    for (i = -extent; i <= extent; ++i)
+        for (j = -extent; j <= extent; ++j)
+        {
+            double k = std::exp(-(i*i+j*j)/(2*var))/(2*M_PI*var);
+            ker[extent+i][extent+j] = k;
+            sum += k;
+        }
+    for (i = 0; i < radius; ++i)
+        for (j = 0; j < radius; ++j)
+            ker[i][j] /= sum;
+
+    for (i = 0; i < w; ++i)
+    {
+        for (j = 0; j < h; ++j)
+        {
+            double r, g, b, a;
+            r = g = b = a = 0;
+            for (int x = -extent; x <= extent; ++x)
+            for (int y = -extent; y <= extent; ++y)
+            {
+                SDL_Point p = { x+i, y+j };
+                if (SDL_PointInRect(&p, &sr))
+                {
+                    Uint32 px = getPixel(p.x, p.y, surface);
+                    Uint8 r0, g0, b0, a0;
+                    SDL_GetRGBA(px, surface->format, &r0, &g0, &b0, &a0);
+                    double k = ker[x+extent][y+extent];
+                    r += r0*k;
+                    g += g0*k;
+                    b += b0*k;
+                    a += a0*k;
+                }
+            }
+            setPixel(i, j, SDL_MapRGBA(ret->format, r, g, b, a), ret);
+        }
+    }
+
+    return ret;
 }

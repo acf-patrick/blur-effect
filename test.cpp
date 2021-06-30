@@ -11,7 +11,7 @@ int main(int argc, char** argv)
         SDL_Renderer* renderer;
         SDL_CreateWindowAndRenderer(1, 1, SDL_WINDOW_SHOWN, &window, &renderer);
 
-        SDL_Surface* s = boxBlur(std::string(argv[1]), (argc > 2)?std::atoi(argv[2]):1);
+        SDL_Surface* s = gaussianBlur(std::string(argv[1]), (argc > 2)?std::atoi(argv[2]):1);
         if (s)
             IMG_SavePNG(s, "output.png");
         else
