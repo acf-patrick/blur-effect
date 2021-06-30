@@ -1,9 +1,12 @@
 ## Blur Effect
 Implementation of blur effect using SDL2.
 
-## Screenshot extent = 2
-<<<<<<< HEAD
-![screen](./screen.png)
-=======
-![screen](./screen.png')
->>>>>>> 959b89163391475775fdacb761104792de85fd25
+## Screenshot
+<figure>
+    <img src="box.png" alt="box blur">
+    <figcaption>box blur, extent = 1</figcaption>
+</figure>
+<figure>
+    <img src="gaussian.png" alt="gaussian blur">
+    <figcaption>gaussian blur, radius = 5</figcaption>
+</figure>
